@@ -7,6 +7,7 @@
 #include "dialog.h"
 #include <QMovie>
 #include <QListWidgetItem>
+#include "variantsofsort.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -39,11 +40,16 @@ private slots:
 
     void on_searchNode_clicked();
 
+    void on_mergesort_clicked();
+
+//    void sort();
+
 private:
     Ui::MainWindow *ui;
     neWindow *window;
     specialSearch *pwindow;
     Dialog *pDialog;
     QMovie *movie;
+    variantsOfSort *critSort;
 };
 #endif // MAINWINDOW_H

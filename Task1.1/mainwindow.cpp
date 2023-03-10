@@ -16,6 +16,9 @@
 #include "ui_specialsearch.h"
 #include "dialog.h"
 #include "ui_dialog.h"
+#include "mergeSort.cpp"
+#include "variantsofsort.h"
+#include "ui_variantsofsort.h"
 
 using namespace std;
 
@@ -36,6 +39,8 @@ MainWindow::MainWindow(QWidget *parent)
     window = new neWindow();
     pwindow = new specialSearch();
     pDialog = new Dialog();
+    critSort = new variantsOfSort();
+    connect(critSort, &variantsOfSort::firstWindow, this, &MainWindow::show);
     connect(pDialog, &Dialog::firstWindow, this, &MainWindow::show);
     connect(window, &neWindow::firstWindow, this, &MainWindow::show);
     connect(pwindow, &specialSearch::firstWindow, this, &MainWindow::show);
@@ -48,7 +53,7 @@ MainWindow::~MainWindow()
 
 List<TrainTimetable> trainsList;
 QString fileName = "C:\\FilesForQtLabs\\trains.txt";
-int counter = 0, indexx = 0;
+int counter = 0, indexx = 0, criteriaOfSort;
 bool res = true;
 
 void MainWindow::on_addNode_clicked()
@@ -550,6 +555,7 @@ void MainWindow::on_deleteNode_clicked()
 
 void MainWindow::on_listWidget_itemDoubleClicked(QListWidgetItem *item)
 {
+    try {
     if(choose) {
     QMessageBox::information(this, "Success!", "Выбранный вами рейс был успешно удален из списка!");
 
@@ -619,6 +625,10 @@ void MainWindow::on_listWidget_itemDoubleClicked(QListWidgetItem *item)
         ui->exit->hide();
         ui->edit_reis->hide();
         this->setWindowTitle("Главная");
+    }
+    }
+    catch (...) {
+         QMessageBox::critical(this, "Внимание!", "Не удалось открыть выбранный вами файл!");
     }
 }
 
@@ -780,4 +790,154 @@ void Dialog::on_pushButton_save_clicked()
                 showwindow->show();
             }
 }
+}
+
+bool compareDate(const TrainTimetable& train1, const TrainTimetable& train2) {
+    QDate str1(train1.getDepartureDate().mid(6, 4).toInt(), train1.getDepartureDate().mid(3, 2).toInt(), train1.getDepartureDate().mid(0, 2).toInt());
+    QDate str2(train2.getDepartureDate().mid(6, 4).toInt(), train2.getDepartureDate().mid(3, 2).toInt(), train2.getDepartureDate().mid(0, 2).toInt());
+        if (str1 < str2) return true;
+        if (str1 > str2) return false;
+    return false;
+}
+
+bool compareTime(const TrainTimetable& train1, const TrainTimetable& train2) {
+    QTime str1(train1.getDepartureTime().mid(0, 2).toInt(), train1.getDepartureTime().mid(3, 2).toInt(), 0, 0);
+    QTime str2(train2.getDepartureTime().mid(0, 2).toInt(), train2.getDepartureTime().mid(3, 2).toInt(), 0, 0);
+        if (str1 < str2) return true;
+        if (str1 > str2) return false;
+    return false;
+}
+
+bool compareDestination(const TrainTimetable& train1, const TrainTimetable& train2) {
+    QString str1 = train1.getDestination();
+        QString str2 = train2.getDestination();
+        for (int i = 0; i < train1.getDestination().length() && i < train2.getDestination().length(); ++i) {
+            if (str1[i].toLower() < str2[i].toLower()) return true;
+            if (str1[i].toLower() > str2[i].toLower()) return false;
+        }
+    return false;
+}
+
+bool compareSeats(const TrainTimetable& train1, const TrainTimetable& train2) {
+    int seats1 = train1.getAvailableSeats();
+    int seats2 = train2.getAvailableSeats();
+        if (seats1 < seats2) return true;
+        if (seats1 > seats2) return false;
+    return false;
+}
+
+void sort() {
+    auto arr = new TrainTimetable[trainsList.getSize()];
+        for (int i = 0; i < trainsList.getSize(); ++i) {
+            arr[i] = trainsList[i];
+        }
+        if (criteriaOfSort == 1) {
+        merge_sort(arr, trainsList.getSize(), compareDate);
+        }
+        else if (criteriaOfSort == 2) {
+        merge_sort(arr, trainsList.getSize(), compareTime);
+        }
+        else if (criteriaOfSort == 3) {
+        merge_sort(arr, trainsList.getSize(), compareDestination);
+        }
+        else if (criteriaOfSort == 4) {
+        merge_sort(arr, trainsList.getSize(), compareSeats);
+        }
+        QWidget *showwindow = new QWidget();
+            showwindow->setWindowTitle("Отсортированное расписание рейсов");
+            showwindow->setGeometry(QRect(450, 150, 800, 250));
+            showwindow->resize(650, 500);
+
+            QTableWidget *tableWidget = new QTableWidget();
+            QGridLayout *layout = new QGridLayout(showwindow);
+            layout->addWidget(tableWidget, 0, 0);
+
+            tableWidget->setColumnCount(5);
+            tableWidget->setShowGrid(true);
+
+            QStringList headers1;
+                    headers1.append("Дата вызеда");
+                    headers1.append("Время выезда");
+                    headers1.append("Номер поезда");
+                    headers1.append("Путь назначения");
+                    headers1.append("Количество свободных мест");
+            tableWidget->setHorizontalHeaderLabels(headers1);
+
+            tableWidget->setSelectionMode(QAbstractItemView::MultiSelection);
+
+            tableWidget->horizontalHeader()->setStretchLastSection(true);
+            tableWidget->setEditTriggers(QTableWidget::NoEditTriggers);
+
+            int newcount = 0;
+            int j = 0;
+            for (int i = 0; i < trainsList.getSize(); ++i) {
+                trainsList[i] = arr[i];
+                tableWidget->insertRow(j);
+                tableWidget->setItem(j, 0, new QTableWidgetItem(trainsList[i].getDepartureDate()));
+                tableWidget->setItem(j, 1, new QTableWidgetItem(trainsList[i].getDepartureTime()));
+                tableWidget->setItem(j, 2, new QTableWidgetItem(trainsList[i].getTrainNumber()));
+                tableWidget->setItem(j, 3, new QTableWidgetItem(trainsList[i].getDestination()));
+                if(trainsList[i].getAvailableSeats() == 0) {
+                    QTableWidgetItem* newItem = new QTableWidgetItem(QString::number(trainsList[i].getAvailableSeats()));
+                    newItem->setBackground(Qt::red);
+                    tableWidget->setItem(j, 4, newItem);
+                    newcount++;
+                }
+                else tableWidget->setItem(j, 4, new QTableWidgetItem(QString::number(trainsList[i].getAvailableSeats())));
+                tableWidget->resizeColumnsToContents();
+
+
+            }
+                showwindow->show();
+
+        delete[] arr;
+}
+
+void MainWindow::on_mergesort_clicked()
+{
+    if (trainsList.getSize() == 0) {
+        QMessageBox::critical(this, "ERROR!", "Список рейсов пуст!\nЗаполните список и повторите действие!");
+    }
+    else {
+       critSort->show();
+    }
+}
+
+void variantsOfSort::on_dateSort_clicked()
+{
+    criteriaOfSort = 1;
+    this->close();
+    QMessageBox::information(this, "Success!", "Сортировка списка по дате выезда была успешно выполнена!");
+    QMessageBox::critical(this, "WARNING!", "Обратите внимание, при наличии красной ячейки на рейсе,\nневозможно выполнить заказ в полном объеме!");
+    sort();
+}
+
+
+void variantsOfSort::on_TimeSort_clicked()
+{
+    criteriaOfSort = 2;
+    this->close();
+    QMessageBox::information(this, "Success!", "Сортировка списка по времени выезда была успешно выполнена!");
+    QMessageBox::critical(this, "WARNING!", "Обратите внимание, при наличии красной ячейки на рейсе,\nневозможно выполнить заказ в полном объеме!");
+    sort();
+}
+
+
+void variantsOfSort::on_destinationSort_clicked()
+{
+    criteriaOfSort = 3;
+    this->close();
+    QMessageBox::information(this, "Success!", "Сортировка списка по пункту назначения была успешно выполнена!");
+    QMessageBox::critical(this, "WARNING!", "Обратите внимание, при наличии красной ячейки на рейсе,\nневозможно выполнить заказ в полном объеме!");
+    sort();
+}
+
+
+void variantsOfSort::on_seatsSort_clicked()
+{
+    criteriaOfSort = 4;
+    this->close();
+    QMessageBox::information(this, "Success!", "Сортировка списка по количеству свободных мест была успешно выполнена!");
+    QMessageBox::critical(this, "WARNING!", "Обратите внимание, при наличии красной ячейки на рейсе,\nневозможно выполнить заказ в полном объеме!");
+    sort();
 }

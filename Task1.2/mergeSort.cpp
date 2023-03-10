@@ -2,7 +2,7 @@
 #include <iterator>
 
 template<typename T>
-void merge_sort(T array[], std::size_t size, bool(*cmp) (const T&, const T&)) noexcept
+void merge_sort(T array[], std::size_t size, bool(*cmp) (T&, T&)) noexcept
 {
     if (size > 1)
     {
